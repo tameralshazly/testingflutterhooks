@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
+extension CompactMap<T> on Iterable<T?> {
+  Iterable<T> compactMap<E>([
+    E? Function(T?)? transform,
+  ]) =>
+      map(
+        transform ?? (e) => e,
+      )
+          .where(
+            (e) => e != null,
+          )
+          .cast();
+}
+
+const url =
+    'https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png';
 void main() {
   runApp(
     MaterialApp(
@@ -18,17 +34,12 @@ class HomePage extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = useTextEditingController();
-    final text = useState('');
+    final future = useMemoized(() => NetworkAssetBundle(Uri.parse(url))
+        .load(url)
+        .then((data) => data.buffer.asUint8List())
+        .then((data) => Image.memory(data)));
 
-    useEffect(
-      () {
-        controller.addListener(() {
-          text.value = controller.text;
-        });
-      },
-      [controller],
-    );
+    final snapshot = useFuture(future);
 
     return Scaffold(
       appBar: AppBar(
@@ -36,11 +47,8 @@ class HomePage extends HookWidget {
       ),
       body: Column(
         children: [
-          TextField(
-            controller: controller,
-          ),
-          Text('You have typed ${text.value}'),
-        ],
+          snapshot.data,
+        ].compactMap().toList(),
       ),
     );
   }
