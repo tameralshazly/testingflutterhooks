@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
 extension CompactMap<T> on Iterable<T?> {
@@ -15,8 +16,6 @@ extension CompactMap<T> on Iterable<T?> {
           .cast();
 }
 
-const url =
-    'https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png';
 void main() {
   runApp(
     MaterialApp(
@@ -29,26 +28,39 @@ void main() {
   );
 }
 
+class CountDown extends ValueNotifier<int> {
+  late StreamSubscription sub;
+
+  CountDown({required int from}) : super(from) {
+    sub = Stream.periodic(
+      const Duration(seconds: 1),
+      (v) => from - v,
+    ).takeWhile((value) => value >= 0).listen((value) {
+      this.value = value;
+    });
+  }
+
+  @override
+  void dispose() {
+    sub.cancel();
+    super.dispose();
+  }
+}
+
 class HomePage extends HookWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final future = useMemoized(() => NetworkAssetBundle(Uri.parse(url))
-        .load(url)
-        .then((data) => data.buffer.asUint8List())
-        .then((data) => Image.memory(data)));
-
-    final snapshot = useFuture(future);
+    final countDown = useMemoized(() => CountDown(from: 20));
+    final notifier = useListenable(countDown);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
       ),
-      body: Column(
-        children: [
-          snapshot.data,
-        ].compactMap().toList(),
+      body: Text(
+        notifier.value.toString(),
       ),
     );
   }
